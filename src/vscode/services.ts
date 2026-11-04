@@ -1,12 +1,10 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import * as vscode from 'vscode';
 import type { Collection, Environment } from '../shared/model';
 import { CollectionStore } from '../core/collectionStore';
-import { parseDotenv } from '../core/dotenv';
+import { loadDotenvFile } from '../core/dotenv';
+import { FileAccessError } from '../core/fileAccess';
 import { EnvironmentStore, type SecretProvider } from '../core/environmentStore';
 import type { EngineOptions } from '../core/httpEngine';
-import { isEnoent } from '../core/fsJson';
 import { VariableResolver } from '../core/variables';
 
 const ACTIVE_ENV_KEY = 'httpClient.activeEnvironment';
@@ -73,10 +71,11 @@ export class Services implements vscode.Disposable {
 
   private async loadDotenv(): Promise<void> {
     try {
-      this.dotenv = parseDotenv(await readFile(join(this.rootDir, '.env'), 'utf8'));
+      this.dotenv = await loadDotenvFile(this.rootDir);
     } catch (err) {
-      if (!isEnoent(err)) throw err;
       this.dotenv = {};
+      if (!(err instanceof FileAccessError)) throw err;
+      void vscode.window.showWarningMessage(`HTTP Client: ${err.message} {{$dotenv}} values are disabled.`);
     }
   }
 

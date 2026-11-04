@@ -106,6 +106,49 @@ describe('buildRequest', () => {
     expect(buildRequest(req({ body: { type: 'xml', raw: '<a/>' } }), { type: 'none' }, resolver()).headers).toContainEqual(['Content-Type', 'application/xml']);
   });
 
+  it('keeps repeated multipart keys in order so arrays are sent as repeated parts', () => {
+    const out = buildRequest(
+      req({
+        body: {
+          type: 'multipart',
+          multipart: [
+            { key: 'tags', value: 'red', enabled: true, kind: 'text' },
+            { key: 'files[]', value: 'a.png', enabled: true, kind: 'file' },
+            { key: 'tags', value: 'blue', enabled: true, kind: 'text' },
+            { key: 'files[]', value: 'b.png', enabled: true, kind: 'file' },
+          ],
+        },
+      }),
+      { type: 'none' },
+      resolver(),
+    );
+    expect(out.body).toEqual({
+      kind: 'multipart',
+      fields: [
+        { name: 'tags', value: 'red', isFile: false },
+        { name: 'files[]', value: 'a.png', isFile: true },
+        { name: 'tags', value: 'blue', isFile: false },
+        { name: 'files[]', value: 'b.png', isFile: true },
+      ],
+    });
+    expect(toCurl(out)).toContain("-F 'tags=red' -F 'files[]=@a.png' -F 'tags=blue' -F 'files[]=@b.png'");
+  });
+
+  it('drops a manual Content-Type for multipart so the generated boundary is used', () => {
+    const out = buildRequest(
+      req({
+        headers: [
+          { key: 'content-type', value: 'application/json', enabled: true },
+          { key: 'Accept', value: '*/*', enabled: true },
+        ],
+        body: { type: 'multipart', multipart: [{ key: 'f', value: 'a.png', enabled: true, kind: 'file' }] },
+      }),
+      { type: 'none' },
+      resolver(),
+    );
+    expect(out.headers).toEqual([['Accept', '*/*']]);
+  });
+
   it('renders curl with shell-safe quoting', () => {
     const r = buildRequest(req({ method: 'POST', body: { type: 'text', raw: "it's" } }), { type: 'none' }, resolver());
     expect(toCurl(r)).toBe(`curl -X POST 'https://api.example.com/items' -H 'Content-Type: text/plain' --data-raw 'it'\\''s'`);

@@ -37,6 +37,27 @@ export function persist(): void {
   api.setState({ route: store.route, expanded: [...store.expanded], requestSplit: store.requestSplit } satisfies Persisted);
 }
 
+// ---------- file picker (async round-trip to the host) ----------
+
+const pendingPicks = new Map<string, (paths: string[]) => void>();
+let pickSeq = 0;
+
+/** Asks the host to show the OS file picker. Resolves with the chosen paths (empty if cancelled). */
+export function pickFiles(many: boolean): Promise<string[]> {
+  const pickId = `pick-${++pickSeq}`;
+  return new Promise((resolve) => {
+    pendingPicks.set(pickId, resolve);
+    post({ type: 'pickFiles', pickId, many });
+  });
+}
+
+/** Called by main.ts for `filesPicked` messages; unknown ids are ignored. */
+export function resolvePick(pickId: string, paths: string[]): void {
+  const resolve = pendingPicks.get(pickId);
+  pendingPicks.delete(pickId);
+  resolve?.(paths);
+}
+
 /** Render hooks, filled in by main.ts (avoids circular imports between views). */
 export const app = {
   navigate: (_target: NavTarget): void => undefined,

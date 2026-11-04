@@ -53,7 +53,9 @@ export type WebviewToHost =
   | { type: 'send'; request: RequestItem }
   | { type: 'cancel'; requestId: string }
   | { type: 'saveResponse'; requestId: string }
-  | { type: 'copyAsCurl'; request: RequestItem };
+  | { type: 'copyAsCurl'; request: RequestItem }
+  /** Opens the OS file picker; answered with `filesPicked` carrying the same `pickId`. */
+  | { type: 'pickFiles'; pickId: string; many: boolean };
 
 /** Messages sent from the extension host to the webview. */
 export type HostToWebview =
@@ -61,7 +63,9 @@ export type HostToWebview =
   | { type: 'navigate'; target: NavTarget }
   | { type: 'sending'; requestId: string }
   | { type: 'response'; requestId: string; response: ResponseData; unresolved: string[] }
-  | { type: 'error'; requestId?: string; message: string; unresolved?: string[] };
+  | { type: 'error'; requestId?: string; message: string; unresolved?: string[] }
+  /** Files chosen for a `pickFiles` request: workspace-relative when inside the workspace; empty if cancelled. */
+  | { type: 'filesPicked'; pickId: string; paths: string[] };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isStr = (v: unknown): v is string => typeof v === 'string';
@@ -133,6 +137,8 @@ export function isWebviewToHost(v: unknown): v is WebviewToHost {
     case 'cancel':
     case 'saveResponse':
       return isStr(v.requestId);
+    case 'pickFiles':
+      return isStr(v.pickId) && typeof v.many === 'boolean';
     default:
       return false;
   }

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile, mkdir, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -156,5 +156,38 @@ describe('EnvironmentStore', () => {
     await fresh.load();
     expect(fresh.get(GLOBALS_ID)?.variables).toEqual([{ key: 'g', value: '1', enabled: true }]);
     expect(fresh.list()).toEqual([]);
+  });
+});
+
+describe('stores stay inside the workspace', () => {
+  let outside: string;
+  beforeEach(async () => {
+    outside = await mkdtemp(join(tmpdir(), 'httpclient-outside-'));
+  });
+  afterEach(async () => {
+    await rm(outside, { recursive: true, force: true });
+  });
+
+  it('skips collection files that are symlinks to outside the workspace', async () => {
+    await writeFile(join(outside, 'evil.json'), JSON.stringify(collection('evil', 'Evil')));
+    const dir = join(root, '.httpclient', 'collections');
+    await mkdir(dir, { recursive: true });
+    await symlink(join(outside, 'evil.json'), join(dir, 'evil.json'));
+    const store = new CollectionStore(root);
+    expect(await store.load()).toEqual([]);
+    expect(store.errors[0].message).toMatch(/outside the workspace/);
+  });
+
+  it('refuses to read or write through a .httpclient folder symlinked outside the workspace', async () => {
+    await mkdir(join(outside, 'collections'), { recursive: true });
+    await writeFile(join(outside, 'collections', 'a.json'), JSON.stringify(collection('a', 'A')));
+    await symlink(outside, join(root, '.httpclient'));
+    const store = new CollectionStore(root);
+    expect(await store.load()).toEqual([]);
+    await expect(store.save(collection('b', 'B'))).rejects.toThrow(/outside the workspace/);
+    expect(await readdir(join(outside, 'collections'))).toEqual(['a.json']);
+
+    const envs = new EnvironmentStore(root, new MemorySecrets());
+    await expect(envs.load()).rejects.toThrow(/outside the workspace/);
   });
 });

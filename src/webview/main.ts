@@ -2,7 +2,7 @@ import './style.css';
 import type { HostToWebview, NavTarget } from '../shared/messages';
 import { el, icon } from './dom';
 import { renderSidebar } from './sidebar';
-import { app, findCollection, findRequest, persist, post, store } from './store';
+import { app, findCollection, findRequest, persist, post, resolvePick, store } from './store';
 import { cx, PLACEHOLDER, SPINNER } from './ui';
 import { flushCollectionDraft, renderCollectionView, syncCollectionView } from './views/collection';
 import { flushRequestDraft, onRequestSendShortcut, renderRequestView, renderResponsePane, syncRequestView } from './views/request';
@@ -131,6 +131,9 @@ window.addEventListener('message', (event: MessageEvent<HostToWebview>) => {
       } else {
         showToast(msg.message);
       }
+      break;
+    case 'filesPicked':
+      resolvePick(msg.pickId, msg.paths);
       break;
   }
 });

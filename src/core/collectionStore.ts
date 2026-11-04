@@ -73,7 +73,7 @@ export class CollectionStore {
     for (const name of names) {
       const file = join(this.dir, name);
       try {
-        const collection = parseCollection(await readJson(file));
+        const collection = parseCollection(await readJson(file, this.rootDir));
         if (this.collections.has(collection.id)) throw new Error(`duplicate collection id ${collection.id}`);
         this.collections.set(collection.id, collection);
         this.files.set(collection.id, file);
@@ -107,7 +107,7 @@ export class CollectionStore {
   /** Saves a collection; new collections get a file named after their slug. File names stay stable on rename. */
   async save(collection: Collection): Promise<string> {
     const file = this.files.get(collection.id) ?? this.uniqueFile(collection.name);
-    await writeJsonAtomic(file, collection);
+    await writeJsonAtomic(file, collection, this.rootDir);
     this.collections.set(collection.id, collection);
     this.files.set(collection.id, file);
     return file;

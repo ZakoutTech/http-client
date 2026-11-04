@@ -1,5 +1,7 @@
 import type { Auth, AuthType, KeyValue, MultipartField } from '../shared/model';
+import { applyPickedFiles, duplicateField } from '../shared/multipart';
 import { el, icon, iconButton, type IconName } from './dom';
+import { pickFiles } from './store';
 import { BTN, BTN_PRIMARY, BTN_SECONDARY, cx, FORM_GRID, HINT, KV_ROW_DISABLED, KV_TABLE, KV_WRAP, LINK_BTN, methodColor } from './ui';
 
 export function methodBadge(method: string): HTMLElement {
@@ -12,7 +14,12 @@ export interface KvOptions {
   rerender: () => void;
   multipart?: boolean;
   keyPlaceholder?: string;
+  /** False once the table's data is no longer being edited (e.g. the user switched request); late picks are dropped. */
+  isLive?: () => boolean;
 }
+
+/** Only one file dialog at a time (the OS dialog is modal; a double click must not queue a second). */
+let pickInFlight = false;
 
 /** Editable key/value table (params, headers, form fields, collection variables). */
 export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
@@ -30,6 +37,37 @@ export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
         changed();
       },
     });
+
+  /** Value cell of a multipart File row: editable path plus a Browse… button (multi-select → array rows). */
+  const fileValue = (kv: MultipartField) =>
+    el('div', { class: 'flex items-center gap-1.5' }, [
+      input(kv, 'value', 'Path to file (relative to workspace)'),
+      el('button', {
+        class: cx(BTN, BTN_SECONDARY, 'px-2 py-1'),
+        type: 'button',
+        title: 'Choose file(s). Picking several adds one row per file with this key (an array).',
+        onclick: async (e: MouseEvent) => {
+          const button = e.currentTarget as HTMLButtonElement;
+          if (pickInFlight) return;
+          pickInFlight = true;
+          button.disabled = true;
+          let paths: string[];
+          try {
+            paths = await pickFiles(true);
+          } finally {
+            pickInFlight = false;
+            button.disabled = false;
+          }
+          if (opts.isLive && !opts.isLive()) return;
+          // Look the row up again: the list may have changed while the dialog was open.
+          const index = list.indexOf(kv);
+          if (index < 0 || !paths.length) return;
+          applyPickedFiles(list as MultipartField[], index, paths);
+          changed();
+          rerender();
+        },
+      }, [icon('paperclip', 14), 'Browse…']),
+    ]);
 
   const rows = list.map((kv, i) =>
     el('tr', { class: kv.enabled ? '' : KV_ROW_DISABLED }, [
@@ -61,8 +99,15 @@ export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
             ]),
           ])
         : null,
-      el('td', {}, [input(kv, 'value', multipart && (kv as MultipartField).kind === 'file' ? 'Path to file (relative to workspace)' : 'Value')]),
-      el('td', { class: 'w-[30px]' }, [
+      el('td', {}, [multipart && (kv as MultipartField).kind === 'file' ? fileValue(kv as MultipartField) : input(kv, 'value', 'Value')]),
+      el('td', { class: multipart ? 'w-[56px] whitespace-nowrap' : 'w-[30px]' }, [
+        multipart
+          ? iconButton('plus', 'Add another value for this key (sent as an array)', () => {
+              duplicateField(list as MultipartField[], i);
+              changed();
+              rerender();
+            })
+          : null,
         iconButton('trash', `Remove ${noun.toLowerCase()}`, () => {
           list.splice(i, 1);
           changed();
@@ -85,7 +130,10 @@ export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
   const head = el('thead', {}, [
     el('tr', {}, [el('th', {}), el('th', {}, ['Key']), multipart ? el('th', {}, ['Type']) : null, el('th', {}, ['Value']), el('th', {})]),
   ]);
-  return el('div', { class: KV_WRAP }, [el('table', { class: KV_TABLE }, [head, el('tbody', {}, rows)]), add]);
+  const hint = multipart
+    ? el('p', { class: cx(HINT, 'my-0') }, ['Rows with the same key are sent as an array (one part each), e.g. ', el('code', { class: 'font-mono' }, ['files[]']), ' × 3. Use + on a row to add another value.'])
+    : null;
+  return el('div', { class: KV_WRAP }, [el('table', { class: KV_TABLE }, [head, el('tbody', {}, rows)]), add, hint]);
 }
 
 const AUTH_TYPES: [AuthType, string][] = [

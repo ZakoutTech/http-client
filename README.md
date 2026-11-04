@@ -8,7 +8,7 @@ A free, open-source API client for VS Code with a full graphical workbench: coll
 
 - **Workbench.** One editor tab with everything in it: the collections sidebar, the request editor and the response, an environment picker and the Variables manager. Open it from the **HTTP Client** activity bar icon or **HTTP Client: Open HTTP Client** in the Command Palette. The active environment is also shown in the status bar; click it to switch.
 - **Collections, folders and requests.** Create, rename, duplicate and delete collections, folders and requests from the sidebar's hover buttons or its `⋯` / right-click menu. Drag and drop requests and folders to reorder them or move them between collections. A search box filters by name, method or URL.
-- **Request editor.** Method, URL, query params, headers, body (JSON, text, XML, form URL-encoded, multipart with files, binary file) and auth. Rename a request by clicking its title. **Send** with the button or <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>Enter</kbd>, cancel a running request, or copy it as a `curl` command.
+- **Request editor.** Method, URL, query params, headers, body (JSON, text, XML, form URL-encoded, multipart with files and arrays, binary file) and auth. Rename a request by clicking its title. **Send** with the button or <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>Enter</kbd>, cancel a running request, or copy it as a `curl` command.
 - **Response viewer.** Status, time and size; Pretty (syntax-highlighted JSON), Raw and Headers views; **Save** the body to a file.
 - **Variables everywhere.** Use `{{name}}` in the URL, params, headers, body and auth. Chips under the URL show every variable the request uses and whether it is defined, secret, dynamic or missing; click one to jump to the Variables manager.
 - **Environments and secrets.** Globals plus any number of environments (Development, Production, …), with one active at a time. Mark a variable as **Secret** and its value is kept in VS Code SecretStorage: the file on disk keeps an empty value, and the value is never sent back to the GUI.
@@ -58,6 +58,31 @@ When a request is sent, `{{name}}` is resolved in this order (first match wins):
 4. Globals
 
 Unresolved variables are left as-is, and the response shows a warning that lists them.
+
+## Multipart files and arrays
+
+In **Body → Multipart**, set a part's type to **File** and click **Browse…** to pick one or more files. Files inside the workspace are stored as workspace-relative paths (so the collection works for teammates); files elsewhere keep their absolute path. You can also type a path, including `{{variables}}`.
+
+Each file is sent with its file name and a content type based on its extension (`image/png`, `application/pdf`, …; unknown types use `application/octet-stream`).
+
+**Arrays** are repeated parts with the same key, which is how `multipart/form-data` sends lists:
+
+- Picking several files at once adds one row per file, all with the row's key (for example `files[]` × 3).
+- The **+** button on any row adds another value with the same key, for text or file parts.
+- Name the key `files` or `files[]` to match what your server expects (Spring, Go and ASP.NET read repeated keys; PHP and Rails expect `[]`).
+
+Any `Content-Type` header you set is ignored for multipart bodies, because the boundary has to be generated when the request is sent.
+
+## File access and security
+
+HTTP Client only touches files inside the open workspace folder. Paths are checked by their real location, so `..` and symlinks can't be used to get around this.
+
+- **Uploads** (multipart files and binary bodies) are read only from inside the workspace. If a request points at a file outside it (an absolute path, `../..`, or a symlink), Send shows a dialog listing the exact files and the destination host. Nothing is read unless you choose **Upload anyway**, and that approval applies to that one send only.
+- **`.env`** is read only from the workspace root. A `.env` that is a symlink to a file elsewhere is ignored, with a warning.
+- **Collections and environments** are read from and written to `.httpclient/` only. Files or folders there that are symlinks to somewhere else are skipped, and nothing is written through them.
+- **OpenAPI import**: `$ref`s in a local spec may only point at files in the spec's own folder or below. Specs imported from a URL never read local files.
+- **Workspace Trust**: the extension doesn't run in Restricted Mode, because a workspace you haven't trusted could contain collections that send requests on your behalf.
+- **Saving a response** writes only to the location you pick in the save dialog.
 
 ## Install
 

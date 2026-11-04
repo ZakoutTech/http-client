@@ -76,7 +76,7 @@ export class EnvironmentStore {
   private async readEnv(file: string, fallbackId?: string, fallbackName?: string): Promise<Environment> {
     let raw: Record<string, unknown> = {};
     try {
-      raw = (await readJson(file)) as Record<string, unknown>;
+      raw = (await readJson(file, this.rootDir)) as Record<string, unknown>;
     } catch (err) {
       if (!isEnoent(err) || !fallbackId) throw err;
     }
@@ -119,12 +119,12 @@ export class EnvironmentStore {
       variables: env.variables.map((v) => (v.secret ? { ...v, value: '' } : v)),
     };
     if (env.id === GLOBALS_ID) {
-      await writeJsonAtomic(this.globalsFile, onDisk);
+      await writeJsonAtomic(this.globalsFile, onDisk, this.rootDir);
       this.globals = env;
       return;
     }
     const file = this.files.get(env.id) ?? this.uniqueFile(env.name);
-    await writeJsonAtomic(file, onDisk);
+    await writeJsonAtomic(file, onDisk, this.rootDir);
     this.envs.set(env.id, env);
     this.files.set(env.id, file);
   }

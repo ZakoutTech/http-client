@@ -5,8 +5,10 @@ import { isWebviewToHost, type HostToWebview, type NavTarget, type WebviewToHost
 import { effectiveAuth, findItem } from '../core/collectionOps';
 import { GLOBALS_ID } from '../core/environmentStore';
 import { applyEnvironmentUpdate, toEnvironmentView } from '../core/environmentView';
+import { filesOutsideRoot } from '../core/fileAccess';
 import { executeRequest, RequestCancelledError } from '../core/httpEngine';
-import { buildRequest, toCurl } from '../core/requestBuilder';
+import { toRequestPath } from '../core/paths';
+import { buildRequest, toCurl, type ResolvedRequest } from '../core/requestBuilder';
 import type { Actions } from './actions';
 import type { Services } from './services';
 
@@ -188,6 +190,24 @@ export class Workbench implements vscode.Disposable {
         void vscode.window.showInformationMessage('cURL command copied to clipboard.');
         return;
       }
+      case 'pickFiles': {
+        // Always answer, even on failure, so the webview's pending pick never hangs.
+        let paths: string[] = [];
+        try {
+          const root = this.services.rootDir;
+          const picked = await vscode.window.showOpenDialog({
+            canSelectMany: msg.many,
+            canSelectFiles: true,
+            canSelectFolders: false,
+            openLabel: msg.many ? 'Attach files' : 'Attach file',
+            defaultUri: vscode.Uri.file(root),
+          });
+          paths = (picked ?? []).map((uri) => toRequestPath(uri.fsPath, root));
+        } finally {
+          this.post({ type: 'filesPicked', pickId: msg.pickId, paths });
+        }
+        return;
+      }
     }
   }
 
@@ -229,7 +249,8 @@ export class Workbench implements vscode.Disposable {
     try {
       const resolved = buildRequest(request, effectiveAuth(loc.collection, requestId), resolver);
       unresolved = [...resolver.unresolved];
-      const response = await executeRequest(resolved, this.services.engineOptions(), abort.signal);
+      const allowFilesOutside = await this.confirmOutsideFiles(resolved.body, resolved.url);
+      const response = await executeRequest(resolved, { ...this.services.engineOptions(), allowFilesOutside }, abort.signal);
       this.responses.set(requestId, response);
       this.post({ type: 'response', requestId, response, unresolved });
     } catch (err) {
@@ -242,6 +263,29 @@ export class Workbench implements vscode.Disposable {
     } finally {
       if (this.aborts.get(requestId) === abort) this.aborts.delete(requestId);
     }
+  }
+
+  /**
+   * Files outside the workspace are never uploaded silently (a shared collection could point at
+   * ~/.ssh or similar): the user must approve the exact files and destination for this send.
+   */
+  private async confirmOutsideFiles(body: ResolvedRequest['body'], url: string): Promise<Set<string>> {
+    const outside = await filesOutsideRoot(body, this.services.rootDir);
+    if (!outside.length) return new Set();
+    let host = url;
+    try {
+      host = new URL(url).host;
+    } catch {
+      // keep the raw URL
+    }
+    const list = outside.map((f) => `• ${f.real}`).join('\n');
+    const choice = await vscode.window.showWarningMessage(
+      `This request uploads ${outside.length === 1 ? 'a file' : `${outside.length} files`} from outside the workspace to ${host}.`,
+      { modal: true, detail: `${list}\n\nOnly continue if you trust this request and its destination.` },
+      'Upload anyway',
+    );
+    if (choice !== 'Upload anyway') throw new Error('Upload cancelled: files outside the workspace were not approved.');
+    return new Set(outside.map((f) => f.real));
   }
 
   private async saveResponse(requestId: string): Promise<void> {
