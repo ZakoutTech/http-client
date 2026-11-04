@@ -54,6 +54,7 @@ const ICONS = {
   terminal: 'M4 17l6-5-6-5M12 19h8',
   save: 'M5 3h11l3 3v15H5zM8 3v5h7V3M8 21v-7h8v7',
   bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+  paperclip: 'M21 12.5l-8.5 8.5a5 5 0 0 1-7-7L14 5.5a3.5 3.5 0 0 1 5 5L10.5 19a2 2 0 0 1-3-3L15 8.5',
 } as const;
 
 export type IconName = keyof typeof ICONS;

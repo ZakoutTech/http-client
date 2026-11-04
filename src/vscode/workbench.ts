@@ -6,6 +6,7 @@ import { effectiveAuth, findItem } from '../core/collectionOps';
 import { GLOBALS_ID } from '../core/environmentStore';
 import { applyEnvironmentUpdate, toEnvironmentView } from '../core/environmentView';
 import { executeRequest, RequestCancelledError } from '../core/httpEngine';
+import { toRequestPath } from '../core/paths';
 import { buildRequest, toCurl } from '../core/requestBuilder';
 import type { Actions } from './actions';
 import type { Services } from './services';
@@ -186,6 +187,24 @@ export class Workbench implements vscode.Disposable {
         const req = buildRequest(msg.request, effectiveAuth(loc.collection, msg.request.id), this.services.resolverFor(loc.collection));
         await vscode.env.clipboard.writeText(toCurl(req));
         void vscode.window.showInformationMessage('cURL command copied to clipboard.');
+        return;
+      }
+      case 'pickFiles': {
+        // Always answer, even on failure, so the webview's pending pick never hangs.
+        let paths: string[] = [];
+        try {
+          const root = this.services.rootDir;
+          const picked = await vscode.window.showOpenDialog({
+            canSelectMany: msg.many,
+            canSelectFiles: true,
+            canSelectFolders: false,
+            openLabel: msg.many ? 'Attach files' : 'Attach file',
+            defaultUri: vscode.Uri.file(root),
+          });
+          paths = (picked ?? []).map((uri) => toRequestPath(uri.fsPath, root));
+        } finally {
+          this.post({ type: 'filesPicked', pickId: msg.pickId, paths });
+        }
         return;
       }
     }

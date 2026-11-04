@@ -409,7 +409,15 @@ function bodyEditor(r: RequestItem): HTMLElement {
       wrap.append(kvTable((b.form ??= []), { noun: 'Field', changed, rerender }));
       break;
     case 'multipart':
-      wrap.append(kvTable((b.multipart ??= []), { noun: 'Part', changed, rerender, multipart: true }));
+      wrap.append(kvTable((b.multipart ??= []), { noun: 'Part', changed, rerender, multipart: true, isLive: () => draft?.value === r }));
+      if (r.headers.some((h) => h.enabled && h.key.trim().toLowerCase() === 'content-type')) {
+        wrap.append(
+          el('div', { class: 'flex items-center gap-2 text-warning' }, [
+            icon('braces', 14),
+            'Your Content-Type header is ignored for multipart — the boundary is generated when sending.',
+          ]),
+        );
+      }
       break;
     case 'binary':
       wrap.append(

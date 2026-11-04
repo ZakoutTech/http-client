@@ -79,6 +79,8 @@ describe('isWebviewToHost', () => {
       { type: 'move', collectionId: 'c', itemId: 'i', targetCollectionId: 'c2', targetParentId: null, index: 0 },
       { type: 'cancel', requestId: 'r' },
       { type: 'saveResponse', requestId: 'r' },
+      { type: 'pickFiles', pickId: 'p1', many: true },
+      { type: 'pickFiles', pickId: 'p2', many: false },
     ];
     for (const m of valid) expect(isWebviewToHost(m), JSON.stringify(m)).toBe(true);
   });
@@ -102,6 +104,9 @@ describe('isWebviewToHost', () => {
       { type: 'move', collectionId: 'c', itemId: 'i', targetCollectionId: 'c', targetParentId: null, index: -1 },
       { type: 'move', collectionId: 'c', itemId: 'i', targetCollectionId: 'c', targetParentId: 5 },
       { type: 'cancel' },
+      { type: 'pickFiles', pickId: 'p' },
+      { type: 'pickFiles', many: true },
+      { type: 'pickFiles', pickId: 1, many: true },
     ];
     for (const m of invalid) expect(isWebviewToHost(m), JSON.stringify(m)).toBe(false);
   });

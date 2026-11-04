@@ -529,7 +529,30 @@ function handle(msg: WebviewToHost): void {
     case "cancel":
     case "saveResponse":
       return;
+    case "pickFiles":
+      pickFiles(msg.pickId, msg.many);
+      return;
   }
+}
+
+/**
+ * Browsers don't expose real paths, so the preview answers with `uploads/<file name>`.
+ * Set `window.previewPickFiles = () => [...]` from the console to script a selection.
+ */
+function pickFiles(pickId: string, many: boolean): void {
+  const scripted = (window as unknown as { previewPickFiles?: () => string[] }).previewPickFiles;
+  if (scripted) {
+    emit({ type: "filesPicked", pickId, paths: scripted() });
+    return;
+  }
+  const input = document.createElement("input");
+  input.type = "file";
+  input.multiple = many;
+  input.addEventListener("change", () =>
+    emit({ type: "filesPicked", pickId, paths: [...(input.files ?? [])].map((f) => `uploads/${f.name}`) }),
+  );
+  input.addEventListener("cancel", () => emit({ type: "filesPicked", pickId, paths: [] }));
+  input.click();
 }
 
 (window as unknown as { acquireVsCodeApi: () => unknown }).acquireVsCodeApi =
