@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2E3D5C"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="glyph" gradientUnits="userSpaceOnUse" x1="0" y1="30" x2="0" y2="98">
+      <stop offset="0" stop-color="#67E8F9"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".14"/>
+      <stop offset=".5" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="url(#tile)"/>
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="url(#shine)"/>
+  <rect x="6.75" y="6.75" width="114.5" height="114.5" rx="25.25" fill="none" stroke="#FFFFFF" stroke-opacity=".14" stroke-width="1.5"/>
+  <!-- request: arrow out -->
+  <path d="M30 42h60M78 30l12 12-12 12" fill="none" stroke="url(#glyph)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- response: arrow back -->
+  <path d="M98 86H38M50 74L38 86l12 12" fill="none" stroke="url(#glyph)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".55"/>
+  <!-- payload braces -->
+  <path d="M58 56q-5 0-5 4v1.5q0 2.5-3 2.5 3 0 3 2.5V68q0 4 5 4M70 56q5 0 5 4v1.5q0 2.5 3 2.5-3 0-3 2.5V68q0 4-5 4" fill="none" stroke="#FFFFFF" stroke-opacity=".85" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
