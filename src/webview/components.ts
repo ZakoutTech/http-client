@@ -1,0 +1,238 @@
+import type { Auth, AuthType, KeyValue, MultipartField } from '../shared/model';
+import { el, icon, iconButton, type IconName } from './dom';
+
+export function methodBadge(method: string): HTMLElement {
+  return el('span', { class: `method method-${method}` }, [method === 'DELETE' ? 'DEL' : method === 'OPTIONS' ? 'OPT' : method]);
+}
+
+export interface KvOptions {
+  noun: string;
+  changed: () => void;
+  rerender: () => void;
+  multipart?: boolean;
+  keyPlaceholder?: string;
+}
+
+/** Editable key/value table (params, headers, form fields, collection variables). */
+export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
+  const { noun, changed, rerender, multipart } = opts;
+  const input = (kv: KeyValue, field: 'key' | 'value', placeholder: string) =>
+    el('input', {
+      type: 'text',
+      value: kv[field],
+      placeholder,
+      spellcheck: 'false',
+      'aria-label': `${noun} ${field}`,
+      title: field === 'value' ? (kv.description ?? '') : '',
+      oninput: (e: Event) => {
+        kv[field] = (e.target as HTMLInputElement).value;
+        changed();
+      },
+    });
+
+  const rows = list.map((kv, i) =>
+    el('tr', { class: kv.enabled ? '' : 'disabled' }, [
+      el('td', { class: 'check' }, [
+        el('input', {
+          type: 'checkbox',
+          checked: kv.enabled,
+          'aria-label': 'Enabled',
+          onchange: (e: Event) => {
+            kv.enabled = (e.target as HTMLInputElement).checked;
+            changed();
+            rerender();
+          },
+        }),
+      ]),
+      el('td', {}, [input(kv, 'key', opts.keyPlaceholder ?? 'Key')]),
+      multipart
+        ? el('td', { class: 'kind' }, [
+            el('select', {
+              'aria-label': 'Part type',
+              onchange: (e: Event) => {
+                (kv as MultipartField).kind = (e.target as HTMLSelectElement).value as MultipartField['kind'];
+                changed();
+                rerender();
+              },
+            }, [
+              el('option', { value: 'text', selected: (kv as MultipartField).kind !== 'file' }, ['Text']),
+              el('option', { value: 'file', selected: (kv as MultipartField).kind === 'file' }, ['File']),
+            ]),
+          ])
+        : null,
+      el('td', {}, [input(kv, 'value', multipart && (kv as MultipartField).kind === 'file' ? 'Path to file (relative to workspace)' : 'Value')]),
+      el('td', { class: 'del' }, [
+        iconButton('trash', `Remove ${noun.toLowerCase()}`, () => {
+          list.splice(i, 1);
+          changed();
+          rerender();
+        }),
+      ]),
+    ]),
+  );
+
+  const add = el('button', {
+    class: 'link-btn',
+    type: 'button',
+    onclick: () => {
+      list.push(multipart ? ({ key: '', value: '', enabled: true, kind: 'text' } as MultipartField) : { key: '', value: '', enabled: true });
+      changed();
+      rerender();
+    },
+  }, [icon('plus', 14), `Add ${noun.toLowerCase()}`]);
+
+  const head = el('thead', {}, [
+    el('tr', {}, [el('th', {}), el('th', {}, ['Key']), multipart ? el('th', {}, ['Type']) : null, el('th', {}, ['Value']), el('th', {})]),
+  ]);
+  return el('div', { class: 'kv-wrap' }, [el('table', { class: 'kv' }, [head, el('tbody', {}, rows)]), add]);
+}
+
+const AUTH_TYPES: [AuthType, string][] = [
+  ['inherit', 'Inherit from parent'],
+  ['none', 'No auth'],
+  ['basic', 'Basic'],
+  ['bearer', 'Bearer token'],
+  ['apikey', 'API key'],
+  ['oauth2', 'OAuth 2.0 (client credentials)'],
+];
+
+function defaultAuth(type: AuthType): Auth {
+  switch (type) {
+    case 'basic':
+      return { type, username: '{{username}}', password: '{{password}}' };
+    case 'bearer':
+      return { type, token: '{{token}}' };
+    case 'apikey':
+      return { type, key: 'X-API-Key', value: '{{apiKey}}', in: 'header' };
+    case 'oauth2':
+      return { type, grant: 'client_credentials', tokenUrl: '', clientId: '{{clientId}}', clientSecret: '{{clientSecret}}', scope: '', clientAuthentication: 'header' };
+    default:
+      return { type } as Auth;
+  }
+}
+
+/** Auth form. `allowInherit` is false for collections (the top of the chain). */
+export function authEditor(get: () => Auth, set: (auth: Auth) => void, changed: () => void, rerender: () => void, allowInherit: boolean): HTMLElement {
+  const a = get() as Record<string, string> & Auth;
+  const field = (label: string, key: string, placeholder = '') => [
+    el('label', {}, [label]),
+    el('input', {
+      type: 'text',
+      value: a[key] ?? '',
+      placeholder,
+      spellcheck: 'false',
+      oninput: (e: Event) => {
+        a[key] = (e.target as HTMLInputElement).value;
+        changed();
+      },
+    }),
+  ];
+  const select = (label: string, key: string, options: [string, string][]) => [
+    el('label', {}, [label]),
+    el('select', {
+      onchange: (e: Event) => {
+        a[key] = (e.target as HTMLSelectElement).value;
+        changed();
+      },
+    }, options.map(([v, l]) => el('option', { value: v, selected: (a[key] ?? options[0][0]) === v }, [l]))),
+  ];
+
+  const types = AUTH_TYPES.filter(([t]) => allowInherit || t !== 'inherit');
+  const grid = el('div', { class: 'form-grid' }, [
+    el('label', {}, ['Type']),
+    el('select', {
+      onchange: (e: Event) => {
+        set(defaultAuth((e.target as HTMLSelectElement).value as AuthType));
+        changed();
+        rerender();
+      },
+    }, types.map(([v, l]) => el('option', { value: v, selected: a.type === v }, [l]))),
+  ]);
+
+  switch (a.type) {
+    case 'basic':
+      grid.append(...field('Username', 'username', '{{username}}'), ...field('Password', 'password', '{{password}}'));
+      break;
+    case 'bearer':
+      grid.append(...field('Token', 'token', '{{token}}'));
+      break;
+    case 'apikey':
+      grid.append(...field('Key', 'key', 'X-API-Key'), ...field('Value', 'value', '{{apiKey}}'), ...select('Add to', 'in', [['header', 'Header'], ['query', 'Query params']]));
+      break;
+    case 'oauth2':
+      grid.append(
+        ...field('Token URL', 'tokenUrl', 'https://auth.example.com/oauth/token'),
+        ...field('Client ID', 'clientId', '{{clientId}}'),
+        ...field('Client secret', 'clientSecret', '{{clientSecret}}'),
+        ...field('Scope', 'scope', 'read write'),
+        ...select('Send credentials', 'clientAuthentication', [['header', 'As Basic auth header'], ['body', 'In request body']]),
+      );
+      break;
+  }
+  const hint =
+    a.type === 'inherit'
+      ? 'Uses the auth configured on the parent folder or collection.'
+      : a.type === 'none'
+        ? 'No Authorization header will be added.'
+        : 'Tip: reference variables such as {{token}} and store their values as secrets in an environment — they are kept in VS Code SecretStorage, never in the collection file.';
+  return el('div', {}, [grid, el('p', { class: 'hint' }, [hint])]);
+}
+
+export interface MenuItem {
+  label: string;
+  icon: IconName;
+  run: () => void;
+  danger?: boolean;
+}
+
+let openMenu: HTMLElement | undefined;
+
+export function closeMenu(): void {
+  openMenu?.remove();
+  openMenu = undefined;
+}
+
+/** Small popup menu anchored at the mouse position. */
+export function showMenu(event: MouseEvent, items: MenuItem[]): void {
+  event.preventDefault();
+  event.stopPropagation();
+  closeMenu();
+  const menu = el('div', { class: 'menu', role: 'menu' }, items.map((it) =>
+    el('button', {
+      class: `menu-item${it.danger ? ' danger' : ''}`,
+      role: 'menuitem',
+      type: 'button',
+      onclick: () => {
+        closeMenu();
+        it.run();
+      },
+    }, [icon(it.icon, 14), it.label]),
+  ));
+  document.body.append(menu);
+  const { innerWidth, innerHeight } = window;
+  const rect = menu.getBoundingClientRect();
+  menu.style.left = `${Math.min(event.clientX, innerWidth - rect.width - 4)}px`;
+  menu.style.top = `${Math.min(event.clientY, innerHeight - rect.height - 4)}px`;
+  openMenu = menu;
+  (menu.querySelector('button') as HTMLButtonElement | null)?.focus();
+}
+
+document.addEventListener('click', closeMenu);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeMenu();
+});
+window.addEventListener('blur', closeMenu);
+
+export function emptyState(iconName: IconName, title: string, text: string, actions: HTMLElement[] = []): HTMLElement {
+  return el('div', { class: 'empty' }, [
+    el('div', { class: 'empty-icon' }, [icon(iconName, 28)]),
+    el('h3', {}, [title]),
+    el('p', {}, [text]),
+    el('div', { class: 'empty-actions' }, actions),
+  ]);
+}
+
+export function button(label: string, onclick: () => void, opts: { icon?: IconName; secondary?: boolean; danger?: boolean; title?: string } = {}): HTMLButtonElement {
+  const cls = ['btn', opts.secondary ? 'secondary' : '', opts.danger ? 'danger' : ''].filter(Boolean).join(' ');
+  return el('button', { class: cls, type: 'button', title: opts.title, onclick }, [opts.icon ? icon(opts.icon, 14) : null, label]);
+}
