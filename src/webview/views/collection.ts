@@ -3,6 +3,7 @@ import type { Auth, Collection, CollectionItem, Variable } from '../../shared/mo
 import { authEditor, button, emptyState, kvTable, methodBadge } from '../components';
 import { el, icon, iconButton } from '../dom';
 import { app, countRequests, Draft, findCollection, post, store } from '../store';
+import { BADGE, cx, FIELD_LABEL, HEADER_ACTIONS, HEADER_ICON, HINT_TOP, LINK_BTN, LIST_TABLE, PAGE, SECTION_HEADING, tab as tabClass, TABS, TITLE_INPUT, VIEW_HEADER } from '../ui';
 
 interface Settings {
   name: string;
@@ -56,13 +57,13 @@ export function renderCollectionView(container: HTMLElement, collectionId: strin
   const rerender = () => renderCollectionView(container, collectionId, tab);
   const go = (t: CollectionTab) => app.navigate({ view: 'collection', collectionId, tab: t });
 
-  const root = el('section', { class: 'page' });
+  const root = el('section', { class: PAGE });
   container.replaceChildren(root);
   root.append(
-    el('div', { class: 'view-header' }, [
-      el('span', { class: 'header-icon' }, [icon('collection', 18)]),
+    el('div', { class: VIEW_HEADER }, [
+      el('span', { class: HEADER_ICON }, [icon('collection', 18)]),
       el('input', {
-        class: 'title-input',
+        class: TITLE_INPUT,
         type: 'text',
         value: s.name,
         'aria-label': 'Collection name',
@@ -72,7 +73,7 @@ export function renderCollectionView(container: HTMLElement, collectionId: strin
         },
         onchange: () => app.renderSidebar(),
       }),
-      el('div', { class: 'header-actions' }, [
+      el('div', { class: HEADER_ACTIONS }, [
         button('New request', () => post({ type: 'itemAction', action: 'newRequest', collectionId }), { icon: 'plus' }),
         iconButton('folderPlus', 'New folder', () => post({ type: 'itemAction', action: 'newFolder', collectionId })),
         iconButton('copy', 'Duplicate collection', () => post({ type: 'itemAction', action: 'duplicate', collectionId })),
@@ -87,21 +88,21 @@ export function renderCollectionView(container: HTMLElement, collectionId: strin
     ['auth', 'Auth', s.auth.type],
   ];
   root.append(
-    el('div', { class: 'tabs', role: 'tablist' }, tabs.map(([id, label, badge]) =>
-      el('button', { class: `tab${tab === id ? ' active' : ''}`, role: 'tab', type: 'button', 'aria-selected': String(tab === id), onclick: () => go(id) }, [
+    el('div', { class: TABS, role: 'tablist' }, tabs.map(([id, label, badge]) =>
+      el('button', { class: tabClass(tab === id), role: 'tab', type: 'button', 'aria-selected': String(tab === id), onclick: () => go(id) }, [
         label,
-        badge ? el('span', { class: 'tab-badge' }, [badge]) : null,
+        badge ? el('span', { class: cx(BADGE, 'lowercase') }, [badge]) : null,
       ]),
     )),
   );
 
-  const panel = el('div', { class: 'tab-panel' });
+  const panel = el('div');
   root.append(panel);
 
   if (tab === 'overview') {
     const requests = flatRequests(c.items);
     const description = el('textarea', {
-      class: 'description',
+      class: 'min-h-[60px]',
       placeholder: 'Describe this API…',
       'aria-label': 'Description',
       oninput: (e: Event) => {
@@ -111,22 +112,22 @@ export function renderCollectionView(container: HTMLElement, collectionId: strin
     });
     description.value = s.description;
     panel.append(
-      el('div', { class: 'stats' }, [
+      el('div', { class: 'mb-4 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5' }, [
         stat('Requests', String(countRequests(c.items)), 'send'),
         stat('Folders', String(countFolders(c.items)), 'folder'),
         stat('Variables', String(c.variables.filter((v) => v.enabled).length), 'braces', () => go('variables')),
         stat('Auth', c.auth.type === 'none' ? 'None' : c.auth.type, 'lock', () => go('auth')),
       ]),
-      el('label', { class: 'field-label' }, ['Description']),
+      el('label', { class: FIELD_LABEL }, ['Description']),
       description,
-      el('h3', { class: 'section' }, ['Requests']),
+      el('h3', { class: SECTION_HEADING }, ['Requests']),
       requests.length
-        ? el('table', { class: 'list' }, [
+        ? el('table', { class: cx(LIST_TABLE, '[&_td]:py-[7px]') }, [
             el('tbody', {}, requests.map(({ item, path }) =>
-              el('tr', { tabindex: '0', onclick: () => app.navigate({ view: 'request', requestId: item.id }), onkeydown: (e: KeyboardEvent) => e.key === 'Enter' && app.navigate({ view: 'request', requestId: item.id }) }, [
-                el('td', { class: 'method-cell' }, [methodBadge(item.method)]),
-                el('td', { class: 'name-cell' }, [item.name, path.length ? el('span', { class: 'muted path' }, [path.join(' › ')]) : null]),
-                el('td', { class: 'url-cell' }, [item.url]),
+              el('tr', { class: 'cursor-pointer hover:bg-hover', tabindex: '0', onclick: () => app.navigate({ view: 'request', requestId: item.id }), onkeydown: (e: KeyboardEvent) => e.key === 'Enter' && app.navigate({ view: 'request', requestId: item.id }) }, [
+                el('td', { class: 'w-[54px]' }, [methodBadge(item.method)]),
+                el('td', { class: 'whitespace-nowrap' }, [item.name, path.length ? el('span', { class: 'ml-2 text-[0.88em] text-muted' }, [path.join(' › ')]) : null]),
+                el('td', { class: 'w-[55%] max-w-0 truncate font-mono text-muted' }, [item.url]),
               ]),
             )),
           ])
@@ -136,26 +137,30 @@ export function renderCollectionView(container: HTMLElement, collectionId: strin
     );
   } else if (tab === 'variables') {
     panel.append(
-      el('p', { class: 'hint top' }, [
+      el('p', { class: HINT_TOP }, [
         'Collection variables are saved in the collection file (shared via git). Environment variables override them; keep credentials in an environment as ',
         el('strong', {}, ['secrets']),
         '. ',
-        el('button', { class: 'link-btn', type: 'button', onclick: () => app.navigate({ view: 'variables', environmentId: store.data?.activeEnvironmentId ?? undefined }) }, ['Open environments']),
+        el('button', { class: LINK_BTN, type: 'button', onclick: () => app.navigate({ view: 'variables', environmentId: store.data?.activeEnvironmentId ?? undefined }) }, ['Open environments']),
       ]),
       kvTable(s.variables as Variable[], { noun: 'Variable', changed, rerender, keyPlaceholder: 'baseUrl' }),
     );
   } else {
     panel.append(
-      el('p', { class: 'hint top' }, ['Requests and folders set to “Inherit” use this auth.']),
+      el('p', { class: HINT_TOP }, ['Requests and folders set to “Inherit” use this auth.']),
       authEditor(() => s.auth, (a) => (s.auth = a), changed, rerender, false),
     );
   }
 }
 
 function stat(label: string, value: string, iconName: Parameters<typeof icon>[0], onclick?: () => void): HTMLElement {
-  return el(onclick ? 'button' : 'div', { class: `stat${onclick ? ' clickable' : ''}`, type: onclick ? 'button' : undefined, onclick }, [
-    el('span', { class: 'stat-icon' }, [icon(iconName, 16)]),
-    el('span', { class: 'stat-value' }, [value]),
-    el('span', { class: 'stat-label' }, [label]),
+  const cls = cx(
+    'grid grid-cols-[auto_1fr] grid-rows-[auto_auto] items-center gap-x-2.5 rounded-md border border-line bg-fg/[3%] px-3 py-2.5 text-left',
+    onclick && 'hover:border-accent',
+  );
+  return el(onclick ? 'button' : 'div', { class: cls, type: onclick ? 'button' : undefined, onclick }, [
+    el('span', { class: 'row-span-2 inline-flex text-accent' }, [icon(iconName, 16)]),
+    el('span', { class: 'text-[1.3em] font-bold capitalize' }, [value]),
+    el('span', { class: 'text-[0.88em] text-muted' }, [label]),
   ]);
 }

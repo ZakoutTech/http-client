@@ -1,8 +1,9 @@
 import type { Auth, AuthType, KeyValue, MultipartField } from '../shared/model';
 import { el, icon, iconButton, type IconName } from './dom';
+import { BTN, BTN_PRIMARY, BTN_SECONDARY, cx, FORM_GRID, HINT, KV_ROW_DISABLED, KV_TABLE, KV_WRAP, LINK_BTN, methodColor } from './ui';
 
 export function methodBadge(method: string): HTMLElement {
-  return el('span', { class: `method method-${method}` }, [method === 'DELETE' ? 'DEL' : method === 'OPTIONS' ? 'OPT' : method]);
+  return el('span', { class: cx('inline-block min-w-[38px] shrink-0 text-right font-mono text-[10.5px] font-bold', methodColor(method)) }, [method === 'DELETE' ? 'DEL' : method === 'OPTIONS' ? 'OPT' : method]);
 }
 
 export interface KvOptions {
@@ -31,8 +32,8 @@ export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
     });
 
   const rows = list.map((kv, i) =>
-    el('tr', { class: kv.enabled ? '' : 'disabled' }, [
-      el('td', { class: 'check' }, [
+    el('tr', { class: kv.enabled ? '' : KV_ROW_DISABLED }, [
+      el('td', { class: 'w-6' }, [
         el('input', {
           type: 'checkbox',
           checked: kv.enabled,
@@ -46,7 +47,7 @@ export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
       ]),
       el('td', {}, [input(kv, 'key', opts.keyPlaceholder ?? 'Key')]),
       multipart
-        ? el('td', { class: 'kind' }, [
+        ? el('td', { class: 'w-[90px]' }, [
             el('select', {
               'aria-label': 'Part type',
               onchange: (e: Event) => {
@@ -61,7 +62,7 @@ export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
           ])
         : null,
       el('td', {}, [input(kv, 'value', multipart && (kv as MultipartField).kind === 'file' ? 'Path to file (relative to workspace)' : 'Value')]),
-      el('td', { class: 'del' }, [
+      el('td', { class: 'w-[30px]' }, [
         iconButton('trash', `Remove ${noun.toLowerCase()}`, () => {
           list.splice(i, 1);
           changed();
@@ -72,7 +73,7 @@ export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
   );
 
   const add = el('button', {
-    class: 'link-btn',
+    class: LINK_BTN,
     type: 'button',
     onclick: () => {
       list.push(multipart ? ({ key: '', value: '', enabled: true, kind: 'text' } as MultipartField) : { key: '', value: '', enabled: true });
@@ -84,7 +85,7 @@ export function kvTable(list: KeyValue[], opts: KvOptions): HTMLElement {
   const head = el('thead', {}, [
     el('tr', {}, [el('th', {}), el('th', {}, ['Key']), multipart ? el('th', {}, ['Type']) : null, el('th', {}, ['Value']), el('th', {})]),
   ]);
-  return el('div', { class: 'kv-wrap' }, [el('table', { class: 'kv' }, [head, el('tbody', {}, rows)]), add]);
+  return el('div', { class: KV_WRAP }, [el('table', { class: KV_TABLE }, [head, el('tbody', {}, rows)]), add]);
 }
 
 const AUTH_TYPES: [AuthType, string][] = [
@@ -138,7 +139,7 @@ export function authEditor(get: () => Auth, set: (auth: Auth) => void, changed: 
   ];
 
   const types = AUTH_TYPES.filter(([t]) => allowInherit || t !== 'inherit');
-  const grid = el('div', { class: 'form-grid' }, [
+  const grid = el('div', { class: FORM_GRID }, [
     el('label', {}, ['Type']),
     el('select', {
       onchange: (e: Event) => {
@@ -175,7 +176,7 @@ export function authEditor(get: () => Auth, set: (auth: Auth) => void, changed: 
       : a.type === 'none'
         ? 'No Authorization header will be added.'
         : 'Tip: reference variables such as {{token}} and store their values as secrets in an environment — they are kept in VS Code SecretStorage, never in the collection file.';
-  return el('div', {}, [grid, el('p', { class: 'hint' }, [hint])]);
+  return el('div', {}, [grid, el('p', { class: HINT }, [hint])]);
 }
 
 export interface MenuItem {
@@ -197,9 +198,9 @@ export function showMenu(event: MouseEvent, items: MenuItem[]): void {
   event.preventDefault();
   event.stopPropagation();
   closeMenu();
-  const menu = el('div', { class: 'menu', role: 'menu' }, items.map((it) =>
+  const menu = el('div', { class: 'fixed z-10 min-w-[190px] rounded-md border border-menu-border bg-menu p-1 text-menu-fg shadow-[0_6px_20px_rgba(0,0,0,0.35)]', role: 'menu' }, items.map((it) =>
     el('button', {
-      class: `menu-item${it.danger ? ' danger' : ''}`,
+      class: cx('flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left hover:bg-menu-sel hover:text-menu-sel-fg focus:bg-menu-sel focus:text-menu-sel-fg focus:outline-none', it.danger && 'text-red'),
       role: 'menuitem',
       type: 'button',
       onclick: () => {
@@ -224,15 +225,15 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('blur', closeMenu);
 
 export function emptyState(iconName: IconName, title: string, text: string, actions: HTMLElement[] = []): HTMLElement {
-  return el('div', { class: 'empty' }, [
-    el('div', { class: 'empty-icon' }, [icon(iconName, 28)]),
-    el('h3', {}, [title]),
-    el('p', {}, [text]),
-    el('div', { class: 'empty-actions' }, actions),
+  return el('div', { class: 'px-2.5 py-7 text-center text-muted' }, [
+    el('div', { class: 'inline-flex rounded-full bg-hover p-3' }, [icon(iconName, 28)]),
+    el('h3', { class: 'mt-2.5 mb-1 text-[1.17em] font-bold text-fg' }, [title]),
+    el('p', { class: 'my-3' }, [text]),
+    el('div', { class: 'mt-2.5 flex justify-center gap-2' }, actions),
   ]);
 }
 
 export function button(label: string, onclick: () => void, opts: { icon?: IconName; secondary?: boolean; danger?: boolean; title?: string } = {}): HTMLButtonElement {
-  const cls = ['btn', opts.secondary ? 'secondary' : '', opts.danger ? 'danger' : ''].filter(Boolean).join(' ');
+  const cls = cx(BTN, opts.secondary ? BTN_SECONDARY : BTN_PRIMARY);
   return el('button', { class: cls, type: 'button', title: opts.title, onclick }, [opts.icon ? icon(opts.icon, 14) : null, label]);
 }

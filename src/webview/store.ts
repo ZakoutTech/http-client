@@ -16,6 +16,8 @@ export interface ResponseSlot {
 interface Persisted {
   route?: NavTarget;
   expanded?: string[];
+  /** Request pane height as a fraction of the request view; undefined = auto. */
+  requestSplit?: number;
 }
 
 const saved = (api.getState() ?? {}) as Persisted;
@@ -28,10 +30,11 @@ export const store = {
   responses: new Map<string, ResponseSlot>(),
   requestTab: 'params' as 'params' | 'headers' | 'body' | 'auth',
   responseView: 'pretty' as 'pretty' | 'raw' | 'headers',
+  requestSplit: saved.requestSplit as number | undefined,
 };
 
 export function persist(): void {
-  api.setState({ route: store.route, expanded: [...store.expanded] } satisfies Persisted);
+  api.setState({ route: store.route, expanded: [...store.expanded], requestSplit: store.requestSplit } satisfies Persisted);
 }
 
 /** Render hooks, filled in by main.ts (avoids circular imports between views). */

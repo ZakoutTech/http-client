@@ -23,7 +23,7 @@ await build({
   dts: false,
   hash: false,
   outputOptions: { entryFileNames: '[name].js' },
-  css: { fileName: 'main.css' },
+  css: { fileName: 'main.css', transformer: 'postcss' },
   watch: process.env.PREVIEW_ONCE ? false : ['src', 'preview/host.ts', 'preview/main.ts'],
   onSuccess: () => clients.forEach((res) => res.write('event: change\ndata: \n\n')),
 });

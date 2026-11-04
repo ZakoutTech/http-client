@@ -1,3 +1,5 @@
+import { ICON_BTN } from './ui';
+
 type Child = Node | string | null | undefined | false;
 type Attrs = Record<string, unknown>;
 
@@ -69,7 +71,7 @@ export function icon(name: IconName, size = 16): SVGSVGElement {
   svg.setAttribute('stroke-linecap', 'round');
   svg.setAttribute('stroke-linejoin', 'round');
   svg.setAttribute('aria-hidden', 'true');
-  svg.classList.add('icon');
+  svg.setAttribute('class', 'inline-block shrink-0');
   const path = document.createElementNS(ns, 'path');
   path.setAttribute('d', ICONS[name]);
   svg.append(path);
@@ -77,7 +79,7 @@ export function icon(name: IconName, size = 16): SVGSVGElement {
 }
 
 /** Icon-only button with an accessible label and tooltip. */
-export function iconButton(name: IconName, label: string, onclick: (e: MouseEvent) => void, cls = 'icon-btn'): HTMLButtonElement {
+export function iconButton(name: IconName, label: string, onclick: (e: MouseEvent) => void, cls = ICON_BTN): HTMLButtonElement {
   return el('button', { class: cls, title: label, 'aria-label': label, type: 'button', onclick: (e: MouseEvent) => { e.stopPropagation(); onclick(e); } }, [icon(name)]);
 }
 
@@ -91,9 +93,9 @@ export function highlightJson(text: string): Node[] {
     const index = m.index ?? 0;
     if (index > last) nodes.push(document.createTextNode(text.slice(last, index)));
     let cls: string;
-    if (m[1] !== undefined) cls = m[2] ? 'j-key' : 'j-str';
-    else if (m[3] !== undefined) cls = 'j-lit';
-    else cls = 'j-num';
+    if (m[1] !== undefined) cls = m[2] ? 'text-j-key' : 'text-j-str';
+    else if (m[3] !== undefined) cls = 'text-j-lit';
+    else cls = 'text-j-num';
     if (m[1] !== undefined && m[2]) {
       nodes.push(el('span', { class: cls }, [m[1]]), document.createTextNode(m[2]));
     } else {

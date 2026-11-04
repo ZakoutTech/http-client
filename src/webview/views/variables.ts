@@ -2,6 +2,26 @@ import type { EnvironmentView, VariableView } from '../../shared/messages';
 import { button, emptyState } from '../components';
 import { el, icon, iconButton } from '../dom';
 import { activeEnvironment, app, Draft, findEnvironment, post, store, plural, variableScope } from '../store';
+import {
+  CARD_SURFACE,
+  CHIP,
+  CHIP_DYNAMIC,
+  cx,
+  HEADER_ACTIONS,
+  HEADER_ICON,
+  HINT,
+  HINT_TOP,
+  KV_ROW_DISABLED,
+  KV_TABLE,
+  KV_WRAP,
+  LINK_BTN,
+  LIST_TABLE,
+  SECTION_HEADING,
+  SECTION_TITLE,
+  TITLE,
+  TITLE_INPUT,
+  VIEW_HEADER,
+} from '../ui';
 
 let draft: Draft<EnvironmentView> | undefined;
 let secretUpdates: Record<string, string> = {};
@@ -48,34 +68,36 @@ export function renderVariablesView(container: HTMLElement, environmentId: strin
   const env = findEnvironment(selectedId) as EnvironmentView;
   const isGlobals = selectedId === data.globals.id;
 
-  const list = el('nav', { class: 'env-list', 'aria-label': 'Environments' }, [
-    el('div', { class: 'env-list-head' }, [
-      el('span', { class: 'section-title' }, ['Scopes']),
+  const list = el('nav', { class: 'flex w-[220px] flex-none flex-col gap-0.5 overflow-auto border-r border-line px-2 py-3 [&>button:last-child]:mx-1 [&>button:last-child]:mt-2.5 [&>button:last-child]:justify-center', 'aria-label': 'Environments' }, [
+    el('div', { class: 'flex items-center px-1 pb-1.5' }, [
+      el('span', { class: SECTION_TITLE }, ['Scopes']),
       iconButton('plus', 'New environment', () => post({ type: 'action', action: 'newEnvironment' })),
     ]),
     envRow(data.globals, 'globe', 'Globals', 'Always applied', selectedId),
-    el('div', { class: 'env-list-sub' }, ['Environments']),
+    el('div', { class: 'px-1.5 pt-2.5 pb-1 text-[11px] uppercase tracking-[0.06em] text-muted' }, ['Environments']),
     ...data.environments.map((e) =>
       envRow(e, 'layers', e.name, e.id === data.activeEnvironmentId ? 'Active' : plural(e.variables.length, 'variable'), selectedId, e.id === data.activeEnvironmentId),
     ),
-    data.environments.length ? null : el('p', { class: 'muted pad' }, ['No environments yet.']),
+    data.environments.length ? null : el('p', { class: 'px-3 py-2 text-muted' }, ['No environments yet.']),
     button('New environment', () => post({ type: 'action', action: 'newEnvironment' }), { icon: 'plus', secondary: true }),
   ]);
 
-  const editor = el('section', { class: 'env-editor' });
-  container.replaceChildren(el('div', { class: 'variables-layout' }, [list, editor]));
+  const editor = el('section', { class: 'flex-auto overflow-auto px-5 pt-3.5 pb-[30px]', 'data-role': 'env-editor' });
+  container.replaceChildren(el('div', { class: 'flex h-full min-h-0' }, [list, editor]));
   renderEditor(editor, env, isGlobals);
 }
 
 function envRow(env: EnvironmentView, iconName: 'globe' | 'layers', label: string, sub: string, selectedId: string, active = false): HTMLElement {
   return el('button', {
-    class: `env-row${env.id === selectedId ? ' selected' : ''}`,
+    class: cx('flex items-center gap-2 rounded px-2 py-1.5 text-left', env.id === selectedId ? 'bg-selected text-selected-fg' : 'hover:bg-hover'),
     type: 'button',
     onclick: () => app.navigate({ view: 'variables', environmentId: env.id }),
   }, [
     icon(iconName, 15),
-    el('span', { class: 'env-name' }, [label]),
-    active ? el('span', { class: 'badge active' }, ['Active']) : el('span', { class: 'muted small' }, [sub]),
+    el('span', { class: 'flex-1 truncate' }, [label]),
+    active
+      ? el('span', { class: 'rounded-lg bg-green/22 px-[7px] py-px text-[10px] font-semibold text-green' }, ['Active'])
+      : el('span', { class: 'text-[0.88em] text-muted' }, [sub]),
   ]);
 }
 
@@ -87,12 +109,12 @@ function renderEditor(root: HTMLElement, env: EnvironmentView, isGlobals: boolea
   const isActive = store.data?.activeEnvironmentId === env.id;
 
   root.replaceChildren(
-    el('div', { class: 'view-header' }, [
-      el('span', { class: 'header-icon' }, [icon(isGlobals ? 'globe' : 'layers', 18)]),
+    el('div', { class: VIEW_HEADER }, [
+      el('span', { class: HEADER_ICON }, [icon(isGlobals ? 'globe' : 'layers', 18)]),
       isGlobals
-        ? el('h2', { class: 'title' }, ['Globals'])
+        ? el('h2', { class: TITLE }, ['Globals'])
         : el('input', {
-            class: 'title-input',
+            class: TITLE_INPUT,
             type: 'text',
             value: e.name,
             'aria-label': 'Environment name',
@@ -101,7 +123,7 @@ function renderEditor(root: HTMLElement, env: EnvironmentView, isGlobals: boolea
               changed();
             },
           }),
-      el('div', { class: 'header-actions' }, isGlobals
+      el('div', { class: HEADER_ACTIONS }, isGlobals
         ? []
         : [
             isActive
@@ -111,7 +133,7 @@ function renderEditor(root: HTMLElement, env: EnvironmentView, isGlobals: boolea
             iconButton('trash', 'Delete environment', () => post({ type: 'envAction', action: 'delete', environmentId: env.id })),
           ]),
     ]),
-    el('p', { class: 'hint top' }, [
+    el('p', { class: HINT_TOP }, [
       isGlobals ? 'Globals apply to every request. ' : 'Environment values override collection variables and globals while this environment is active. ',
       'Mark credentials as ',
       el('strong', {}, ['secret']),
@@ -147,8 +169,8 @@ function variablesTable(vars: VariableView[], changed: () => void, rerender: () 
             changed();
           },
         });
-    return el('tr', { class: v.enabled ? '' : 'disabled' }, [
-      el('td', { class: 'check' }, [
+    return el('tr', { class: v.enabled ? '' : KV_ROW_DISABLED }, [
+      el('td', { class: 'w-6' }, [
         el('input', {
           type: 'checkbox',
           checked: v.enabled,
@@ -179,9 +201,12 @@ function variablesTable(vars: VariableView[], changed: () => void, rerender: () 
         }),
       ]),
       el('td', {}, [valueInput]),
-      el('td', { class: 'secret-cell' }, [
+      el('td', { class: 'w-24' }, [
         el('button', {
-          class: `secret-toggle${v.secret ? ' on' : ''}`,
+          class: cx(
+            'inline-flex w-[88px] items-center gap-[5px] rounded border px-2 py-1',
+            v.secret ? 'border-yellow/50 bg-yellow/10 text-yellow' : 'border-control bg-transparent text-muted',
+          ),
           type: 'button',
           role: 'switch',
           'aria-checked': String(!!v.secret),
@@ -202,7 +227,7 @@ function variablesTable(vars: VariableView[], changed: () => void, rerender: () 
           },
         }, [icon(v.secret ? 'lock' : 'unlock', 14), v.secret ? 'Secret' : 'Plain']),
       ]),
-      el('td', { class: 'del' }, [
+      el('td', { class: 'w-[30px]' }, [
         iconButton('trash', 'Delete variable', () => {
           vars.splice(i, 1);
           delete secretUpdates[v.key];
@@ -213,21 +238,21 @@ function variablesTable(vars: VariableView[], changed: () => void, rerender: () 
     ]);
   });
 
-  return el('div', { class: 'kv-wrap' }, [
+  return el('div', { class: KV_WRAP }, [
     vars.length
-      ? el('table', { class: 'kv' }, [
+      ? el('table', { class: KV_TABLE }, [
           el('thead', {}, [el('tr', {}, [el('th', {}), el('th', {}, ['Variable']), el('th', {}, ['Value']), el('th', {}, ['Type']), el('th', {})])]),
           el('tbody', {}, rows),
         ])
-      : el('p', { class: 'muted' }, ['No variables yet.']),
+      : el('p', { class: 'text-muted' }, ['No variables yet.']),
     el('button', {
-      class: 'link-btn',
+      class: LINK_BTN,
       type: 'button',
       onclick: () => {
         vars.push({ key: '', value: '', enabled: true });
         changed();
         rerender();
-        const inputs = document.querySelectorAll<HTMLInputElement>('.env-editor table.kv tbody tr:last-child input[type="text"]');
+        const inputs = document.querySelectorAll<HTMLInputElement>('[data-role=env-editor] tbody tr:last-child input[type="text"]');
         inputs[0]?.focus();
       },
     }, [icon('plus', 14), 'Add variable']),
@@ -239,22 +264,26 @@ function resolutionPreview(): HTMLElement {
   const env = activeEnvironment();
   const scope = variableScope(undefined);
   const rows = [...scope.entries()].sort(([a], [b]) => a.localeCompare(b));
-  return el('div', { class: 'card' }, [
-    el('h3', { class: 'section' }, [icon('braces', 15), 'Effective values', el('span', { class: 'muted small' }, [` — active environment: ${env?.name ?? 'none'}`])]),
-    el('p', { class: 'hint' }, ['Precedence: Environment › Collection › Globals. Collection variables are edited in each collection’s settings.']),
+  return el('div', { class: cx(CARD_SURFACE, 'mt-5 px-3.5 pt-1 pb-3') }, [
+    el('h3', { class: cx(SECTION_HEADING, 'mt-2.5') }, [icon('braces', 15), 'Effective values', el('span', { class: 'text-[0.88em] text-muted' }, [` — active environment: ${env?.name ?? 'none'}`])]),
+    el('p', { class: HINT }, ['Precedence: Environment › Collection › Globals. Collection variables are edited in each collection’s settings.']),
     rows.length
-      ? el('table', { class: 'list compact' }, [
+      ? el('table', { class: cx(LIST_TABLE, '[&_td]:py-1') }, [
           el('tbody', {}, rows.map(([name, v]) =>
             el('tr', {}, [
-              el('td', { class: 'mono' }, [`{{${name}}}`]),
-              el('td', { class: 'mono' }, [v.secret ? el('span', { class: 'muted' }, [icon('lock', 12), v.value ? ' secret' : ' secret (empty)']) : v.value || el('span', { class: 'muted' }, ['(empty)'])]),
-              el('td', { class: 'muted' }, [v.source]),
+              el('td', { class: 'font-mono' }, [`{{${name}}}`]),
+              el('td', { class: 'font-mono' }, [
+                v.secret
+                  ? el('span', { class: 'inline-flex items-center gap-1 text-muted' }, [icon('lock', 12), v.value ? 'secret' : 'secret (empty)'])
+                  : v.value || el('span', { class: 'text-muted' }, ['(empty)']),
+              ]),
+              el('td', { class: 'text-muted' }, [v.source]),
             ]),
           )),
         ])
       : emptyState('braces', 'Nothing defined yet', 'Add variables to Globals or an environment.'),
     store.data?.dotenvKeys.length
-      ? el('p', { class: 'hint' }, ['From .env: ', ...store.data.dotenvKeys.map((k) => el('code', { class: 'chip dynamic' }, [`{{$dotenv ${k}}}`]))])
+      ? el('p', { class: 'hint' }, ['From .env: ', ...store.data.dotenvKeys.map((k) => el('code', { class: cx(CHIP, CHIP_DYNAMIC, 'my-0.5 mr-1 ml-0') }, [`{{$dotenv ${k}}}`]))])
       : null,
   ]);
 }

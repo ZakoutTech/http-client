@@ -398,7 +398,7 @@ function handle(msg: WebviewToHost): void {
       if (target?.view === "request" && tab) {
         setTimeout(() => {
           const button = [
-            ...document.querySelectorAll<HTMLButtonElement>("button.tab"),
+            ...document.querySelectorAll<HTMLButtonElement>("button[role=tab]"),
           ].find((b) => b.textContent?.toLowerCase().startsWith(tab));
           button?.click();
         }, 50);

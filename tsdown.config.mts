@@ -32,7 +32,7 @@ export default defineConfig((cli): UserConfig[] => {
       format: 'iife',
       target: 'es2022',
       outputOptions: { entryFileNames: '[name].js' },
-      css: { fileName: 'webview.css', minify: production },
+      css: { fileName: 'webview.css', minify: production, transformer: 'postcss' },
     },
   ];
 });

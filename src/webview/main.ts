@@ -3,21 +3,25 @@ import type { HostToWebview, NavTarget } from '../shared/messages';
 import { el, icon } from './dom';
 import { renderSidebar } from './sidebar';
 import { app, findCollection, findRequest, persist, post, store } from './store';
+import { cx, PLACEHOLDER, SPINNER } from './ui';
 import { flushCollectionDraft, renderCollectionView, syncCollectionView } from './views/collection';
 import { flushRequestDraft, onRequestSendShortcut, renderRequestView, renderResponsePane, syncRequestView } from './views/request';
 import { flushVariablesDraft, renderVariablesView, syncVariablesView } from './views/variables';
 import { renderWelcomeView } from './views/welcome';
 
+const MAIN = 'flex min-w-0 flex-auto flex-col overflow-hidden';
+
 const root = document.getElementById('app') as HTMLElement;
-const header = el('header', { class: 'topbar' });
-const sidebar = el('aside', { class: 'sidebar', 'aria-label': 'Collections' });
-const main = el('main', { class: 'main' });
-root.append(header, el('div', { class: 'body' }, [sidebar, main]));
+root.className = 'flex h-screen flex-col';
+const header = el('header', { class: 'flex flex-none items-center gap-2.5 border-b border-line bg-sidebar px-3 py-1.5' });
+const sidebar = el('aside', { class: 'flex min-h-0 w-[270px] flex-none flex-col border-r border-line bg-sidebar', 'aria-label': 'Collections' });
+const main = el('main', { class: MAIN });
+root.append(header, el('div', { class: 'flex min-h-0 flex-auto' }, [sidebar, main]));
 
 function renderHeader(): void {
   const data = store.data;
   const envSelect = el('select', {
-    class: 'env-select',
+    class: 'min-w-40',
     'aria-label': 'Active environment',
     onchange: (e: Event) => {
       const v = (e.target as HTMLSelectElement).value;
@@ -29,11 +33,11 @@ function renderHeader(): void {
   ]);
   const variablesActive = store.route.view === 'variables';
   header.replaceChildren(
-    el('button', { class: 'brand', type: 'button', onclick: () => app.navigate({ view: 'welcome' }) }, [icon('send', 16), 'HTTP Client']),
-    el('span', { class: 'spacer' }),
-    el('label', { class: 'env-picker' }, [icon('layers', 14), envSelect]),
+    el('button', { class: 'inline-flex items-center gap-2 px-1 py-0.5 font-semibold [&>svg]:text-accent', type: 'button', onclick: () => app.navigate({ view: 'welcome' }) }, [icon('send', 16), 'HTTP Client']),
+    el('span', { class: 'flex-1' }),
+    el('label', { class: 'inline-flex items-center gap-1.5 text-muted' }, [icon('layers', 14), envSelect]),
     el('button', {
-      class: `top-btn${variablesActive ? ' active' : ''}`,
+      class: cx('inline-flex items-center gap-1.5 rounded border px-2.5 py-[5px] hover:bg-hover', variablesActive ? 'border-accent bg-hover' : 'border-control'),
       type: 'button',
       onclick: () => app.navigate({ view: 'variables', environmentId: data?.activeEnvironmentId ?? undefined }),
     }, [icon('braces', 14), 'Variables']),
@@ -43,10 +47,11 @@ function renderHeader(): void {
 function renderMain(): void {
   const r = store.route;
   if (!store.data) {
-    main.replaceChildren(el('div', { class: 'placeholder' }, [el('span', { class: 'spinner' }), el('p', {}, ['Loading…'])]));
+    main.replaceChildren(el('div', { class: PLACEHOLDER }, [el('span', { class: SPINNER }), el('p', {}, ['Loading…'])]));
     return;
   }
-  main.className = `main view-${r.view}`;
+  main.className = MAIN;
+  main.dataset.view = r.view;
   switch (r.view) {
     case 'request':
       renderRequestView(main, r.requestId);
@@ -140,7 +145,7 @@ function refreshResponse(requestId: string): void {
 }
 
 function showToast(message: string): void {
-  const toast = el('div', { class: 'toast', role: 'alert' }, [message]);
+  const toast = el('div', { class: 'fixed right-4 bottom-4 max-w-[420px] rounded-md border border-line bg-notification px-3.5 py-2.5 text-error shadow-[0_6px_20px_rgba(0,0,0,0.35)]', role: 'alert' }, [message]);
   document.body.append(toast);
   setTimeout(() => toast.remove(), 5000);
 }

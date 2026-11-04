@@ -18,3 +18,4 @@ vitest.config.mts
 tsconfig*.json
 package-lock.json
 images/icon.svg
+postcss.config.mjs
