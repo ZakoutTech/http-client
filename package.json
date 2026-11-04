@@ -1,0 +1,428 @@
+{
+  "name": "gui-http-client",
+  "displayName": "GUI HTTP Client",
+  "description": "Free, git-friendly API client for VS Code: collections, environments and variables, OpenAPI/Swagger import, and a GUI request editor.",
+  "version": "0.1.0",
+  "publisher": "zakout",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#1F2937",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Testing",
+    "Other"
+  ],
+  "keywords": [
+    "http",
+    "rest",
+    "api",
+    "openapi",
+    "swagger",
+    "postman",
+    "client"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:.httpclient"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "httpClient",
+          "title": "HTTP Client",
+          "icon": "images/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "httpClient": [
+        {
+          "id": "httpClient.collections",
+          "name": "Collections"
+        },
+        {
+          "id": "httpClient.environments",
+          "name": "Environments"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "httpClient.collections",
+        "contents": "No collections yet.\n[Open HTTP Client](command:httpClient.openWorkbench)\n[New Collection](command:httpClient.newCollection)\n[Import OpenAPI / Swagger](command:httpClient.importOpenApi)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "httpClient.openWorkbench",
+        "title": "Open HTTP Client",
+        "category": "HTTP Client",
+        "icon": "$(window)"
+      },
+      {
+        "command": "httpClient.manageVariables",
+        "title": "Manage Variables & Environments",
+        "category": "HTTP Client",
+        "icon": "$(symbol-namespace)"
+      },
+      {
+        "command": "httpClient.openCollection",
+        "title": "Collection Settings & Variables",
+        "category": "HTTP Client",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "httpClient.openEnvironment",
+        "title": "Manage Variables",
+        "category": "HTTP Client",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "httpClient.newCollection",
+        "title": "New Collection",
+        "category": "HTTP Client",
+        "icon": "$(add)"
+      },
+      {
+        "command": "httpClient.importOpenApi",
+        "title": "Import OpenAPI / Swagger…",
+        "category": "HTTP Client",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "httpClient.refresh",
+        "title": "Refresh",
+        "category": "HTTP Client",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "httpClient.newFolder",
+        "title": "New Folder",
+        "category": "HTTP Client",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "httpClient.newRequest",
+        "title": "New Request",
+        "category": "HTTP Client",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "httpClient.openRequest",
+        "title": "Open Request",
+        "category": "HTTP Client"
+      },
+      {
+        "command": "httpClient.rename",
+        "title": "Rename…",
+        "category": "HTTP Client"
+      },
+      {
+        "command": "httpClient.duplicate",
+        "title": "Duplicate",
+        "category": "HTTP Client"
+      },
+      {
+        "command": "httpClient.delete",
+        "title": "Delete",
+        "category": "HTTP Client"
+      },
+      {
+        "command": "httpClient.newEnvironment",
+        "title": "New Environment",
+        "category": "HTTP Client",
+        "icon": "$(add)"
+      },
+      {
+        "command": "httpClient.selectEnvironment",
+        "title": "Select Environment…",
+        "category": "HTTP Client",
+        "icon": "$(server-environment)"
+      },
+      {
+        "command": "httpClient.activateEnvironment",
+        "title": "Set as Active Environment",
+        "category": "HTTP Client",
+        "icon": "$(check)"
+      },
+      {
+        "command": "httpClient.addVariable",
+        "title": "Add Variable…",
+        "category": "HTTP Client",
+        "icon": "$(add)"
+      },
+      {
+        "command": "httpClient.editVariable",
+        "title": "Edit Value…",
+        "category": "HTTP Client",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "httpClient.toggleSecret",
+        "title": "Toggle Secret",
+        "category": "HTTP Client",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "httpClient.deleteVariable",
+        "title": "Delete Variable",
+        "category": "HTTP Client"
+      },
+      {
+        "command": "httpClient.deleteEnvironment",
+        "title": "Delete Environment",
+        "category": "HTTP Client"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "httpClient.openWorkbench",
+          "when": "view == httpClient.collections",
+          "group": "navigation@0"
+        },
+        {
+          "command": "httpClient.manageVariables",
+          "when": "view == httpClient.environments",
+          "group": "navigation@0"
+        },
+        {
+          "command": "httpClient.newCollection",
+          "when": "view == httpClient.collections",
+          "group": "navigation@1"
+        },
+        {
+          "command": "httpClient.importOpenApi",
+          "when": "view == httpClient.collections",
+          "group": "navigation@2"
+        },
+        {
+          "command": "httpClient.refresh",
+          "when": "view == httpClient.collections",
+          "group": "navigation@3"
+        },
+        {
+          "command": "httpClient.newEnvironment",
+          "when": "view == httpClient.environments",
+          "group": "navigation@1"
+        },
+        {
+          "command": "httpClient.selectEnvironment",
+          "when": "view == httpClient.environments",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "httpClient.newRequest",
+          "when": "view == httpClient.collections && viewItem =~ /^(collection|folder)$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "httpClient.newFolder",
+          "when": "view == httpClient.collections && viewItem =~ /^(collection|folder)$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "httpClient.newRequest",
+          "when": "view == httpClient.collections && viewItem =~ /^(collection|folder)$/",
+          "group": "1_new@1"
+        },
+        {
+          "command": "httpClient.newFolder",
+          "when": "view == httpClient.collections && viewItem =~ /^(collection|folder)$/",
+          "group": "1_new@2"
+        },
+        {
+          "command": "httpClient.rename",
+          "when": "view == httpClient.collections",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "httpClient.duplicate",
+          "when": "view == httpClient.collections && viewItem =~ /^(folder|request)$/",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "httpClient.delete",
+          "when": "view == httpClient.collections",
+          "group": "3_delete@1"
+        },
+        {
+          "command": "httpClient.activateEnvironment",
+          "when": "view == httpClient.environments && viewItem == environment",
+          "group": "inline@1"
+        },
+        {
+          "command": "httpClient.addVariable",
+          "when": "view == httpClient.environments && viewItem =~ /^(environment|environment-active|globals)$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "httpClient.addVariable",
+          "when": "view == httpClient.environments && viewItem =~ /^(environment|environment-active|globals)$/",
+          "group": "1_edit@1"
+        },
+        {
+          "command": "httpClient.deleteEnvironment",
+          "when": "view == httpClient.environments && viewItem =~ /^environment/",
+          "group": "3_delete@1"
+        },
+        {
+          "command": "httpClient.editVariable",
+          "when": "view == httpClient.environments && viewItem =~ /^variable/",
+          "group": "inline@1"
+        },
+        {
+          "command": "httpClient.toggleSecret",
+          "when": "view == httpClient.environments && viewItem =~ /^variable/",
+          "group": "inline@2"
+        },
+        {
+          "command": "httpClient.deleteVariable",
+          "when": "view == httpClient.environments && viewItem =~ /^variable/",
+          "group": "3_delete@1"
+        },
+        {
+          "command": "httpClient.openCollection",
+          "when": "view == httpClient.collections && viewItem == collection",
+          "group": "inline@3"
+        },
+        {
+          "command": "httpClient.openCollection",
+          "when": "view == httpClient.collections && viewItem == collection",
+          "group": "1_new@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "httpClient.openRequest",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.rename",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.duplicate",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.delete",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.newFolder",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.newRequest",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.activateEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.addVariable",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.editVariable",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.toggleSecret",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.deleteVariable",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.deleteEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.openCollection",
+          "when": "false"
+        },
+        {
+          "command": "httpClient.openEnvironment",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "HTTP Client",
+      "properties": {
+        "httpClient.timeoutMs": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 0,
+          "description": "Request timeout in milliseconds (0 disables the timeout)."
+        },
+        "httpClient.followRedirects": {
+          "type": "boolean",
+          "default": true,
+          "description": "Follow HTTP redirects automatically."
+        },
+        "httpClient.maxRedirects": {
+          "type": "number",
+          "default": 10,
+          "minimum": 0,
+          "description": "Maximum number of redirects to follow."
+        },
+        "httpClient.strictSSL": {
+          "type": "boolean",
+          "default": true,
+          "description": "Verify TLS certificates. Disable only for local development with self-signed certificates."
+        },
+        "httpClient.proxy": {
+          "type": "string",
+          "default": "",
+          "description": "Proxy URL (e.g. http://proxy:8080). Empty uses no proxy."
+        },
+        "httpClient.maxResponseBytes": {
+          "type": "number",
+          "default": 52428800,
+          "description": "Maximum response body size to download (bytes)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "watch": "tsdown --watch",
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "eslint src test",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "install:cursor": "npm run package && node scripts/install-extension.mjs cursor",
+    "install:code": "npm run package && node scripts/install-extension.mjs code",
+    "vscode:prepublish": "tsdown --minify",
+    "package": "vsce package --no-dependencies --no-rewrite-relative-links --allow-missing-repository",
+    "preview": "node scripts/preview.mjs"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "^13.1.0",
+    "@tsdown/css": "^0.23.4",
+    "@types/node": "^22.20.5",
+    "@types/vscode": "~1.100.0",
+    "@vitest/coverage-v8": "^5.0.5",
+    "@vscode/vsce": "^4.1.0",
+    "eslint": "^10.14.0",
+    "tsdown": "^0.23.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "undici": "^7.30.1",
+    "vitest": "^5.0.5",
+    "yaml": "^2.9.1"
+  }
+}
