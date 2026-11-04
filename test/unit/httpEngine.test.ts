@@ -182,6 +182,37 @@ describe('executeRequest', () => {
     expect(JSON.parse(binary.body).body).toBe('hello file');
   });
 
+  it('sends each file part with a content type from its extension and keeps repeated names', async () => {
+    await writeFile(join(dir, 'pic.png'), 'png-bytes');
+    await writeFile(join(dir, 'other.png'), 'png-2');
+    await writeFile(join(dir, 'blob.weird'), 'raw');
+    const res = await executeRequest(
+      {
+        method: 'POST',
+        url: `${main.url}/echo`,
+        headers: [],
+        body: {
+          kind: 'multipart',
+          fields: [
+            { name: 'files[]', value: 'pic.png', isFile: true },
+            { name: 'files[]', value: 'other.png', isFile: true },
+            { name: 'raw', value: 'blob.weird', isFile: true },
+            { name: 'tags', value: 'a', isFile: false },
+            { name: 'tags', value: 'b', isFile: false },
+          ],
+        },
+      },
+      { baseDir: dir },
+    );
+    const body: string = JSON.parse(res.body).body;
+    const parts = body.split(/--[^\r\n]+\r\n/).filter((p) => p.includes('Content-Disposition'));
+    expect(parts).toHaveLength(5);
+    expect(parts[0]).toMatch(/name="files\[\]"; filename="pic.png"\r\nContent-Type: image\/png/);
+    expect(parts[1]).toMatch(/name="files\[\]"; filename="other.png"\r\nContent-Type: image\/png/);
+    expect(parts[2]).toMatch(/filename="blob.weird"\r\nContent-Type: application\/octet-stream/);
+    expect(parts.filter((p) => p.includes('name="tags"'))).toHaveLength(2);
+  });
+
   it('propagates connection errors', async () => {
     await expect(executeRequest(get('http://127.0.0.1:1/'), { timeoutMs: 2000 })).rejects.toThrow();
   });

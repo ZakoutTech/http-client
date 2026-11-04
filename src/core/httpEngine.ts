@@ -1,9 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { STATUS_CODES } from 'node:http';
-import { basename, isAbsolute, resolve as resolvePath } from 'node:path';
+import { isAbsolute, resolve as resolvePath } from 'node:path';
 import { Agent, FormData, ProxyAgent, request, type Dispatcher } from 'undici';
 import type { ResponseData } from '../shared/model';
+import { mimeTypeFor } from './mime';
 import { fetchClientCredentialsToken } from './oauth2';
+import { fileNameOf } from './paths';
 import type { ResolvedRequest } from './requestBuilder';
 
 export interface EngineOptions {
@@ -68,7 +70,7 @@ async function buildBody(req: ResolvedRequest, baseDir?: string): Promise<string
       for (const f of req.body.fields) {
         if (f.isFile) {
           const data = await readLocalFile(f.value, baseDir);
-          form.append(f.name, new Blob([new Uint8Array(data)]), basename(f.value));
+          form.append(f.name, new Blob([new Uint8Array(data)], { type: mimeTypeFor(f.value) }), fileNameOf(f.value));
         } else {
           form.append(f.name, f.value);
         }
