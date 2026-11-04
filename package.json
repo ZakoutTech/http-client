@@ -5,6 +5,10 @@
   "version": "0.1.0",
   "publisher": "zakout",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZakoutTech/http-client.git"
+  },
   "icon": "images/icon.png",
   "galleryBanner": {
     "color": "#1F2937",
@@ -407,7 +411,7 @@
     "install:cursor": "npm run package && node scripts/install-extension.mjs cursor",
     "install:code": "npm run package && node scripts/install-extension.mjs code",
     "vscode:prepublish": "tsdown --minify",
-    "package": "vsce package --no-dependencies --no-rewrite-relative-links --allow-missing-repository",
+    "package": "vsce package --no-dependencies",
     "preview": "node scripts/preview.mjs"
   },
   "devDependencies": {

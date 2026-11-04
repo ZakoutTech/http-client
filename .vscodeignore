@@ -3,7 +3,6 @@
 src/**
 test/**
 docs/**
-!docs/images/*.png
 preview/**
 coverage/**
 node_modules/**
