@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- traverses untyped OpenAPI documents */
+import { readFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { parse as parseYaml } from 'yaml';
 import type {
@@ -13,6 +16,7 @@ import type {
   Variable,
 } from '../../shared/model';
 import { newId } from '../../shared/ids';
+import { FileAccessError, isInsideRoot, realFilePath } from '../fileAccess';
 import { exampleToString, generateExample } from './example';
 
 const METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'] as const;
@@ -47,13 +51,39 @@ export function parseSpecText(text: string): any {
   return doc;
 }
 
+/** Resolves local `$ref`s, but only to files whose real path is inside the spec's own folder. */
+function containedFileResolver(specPath: string) {
+  const specDir = dirname(specPath);
+  const toPath = (url: string) => {
+    if (url.startsWith('file:')) return fileURLToPath(url);
+    try {
+      return decodeURI(url);
+    } catch {
+      return url;
+    }
+  };
+  return {
+    order: 1,
+    canRead: (file: { url: string }) => !/^https?:\/\//i.test(file.url),
+    read: async (file: { url: string }) => {
+      const path = toPath(file.url);
+      if (!(await isInsideRoot(specDir, path))) {
+        throw new FileAccessError(`$ref "${path}" is outside the spec's folder (${specDir}); refusing to read it.`);
+      }
+      return readFile(await realFilePath(path, undefined));
+    },
+  };
+}
+
 /** Parses, dereferences and converts a spec into a collection. */
 export async function importOpenApi(source: ImportSource): Promise<Collection> {
   const doc = parseSpecText(source.text);
   const api = await SwaggerParser.dereference(source.location, doc, {
     resolve: {
-      // A spec downloaded from the network must never read local files via $ref.
-      file: !source.isUrl,
+      // The built-in file resolver is replaced: a spec downloaded from the network must never read
+      // local files via $ref, and a local spec may only read files in its own folder.
+      file: false,
+      ...(source.isUrl ? {} : { contained: containedFileResolver(source.location) }),
       http: { timeout: 15_000 },
     },
     dereference: { circular: true },

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -10,6 +10,7 @@ import {
   RequestCancelledError,
   RequestTimeoutError,
 } from '../../src/core/httpEngine';
+import { FileAccessError } from '../../src/core/fileAccess';
 import { clearTokenCache, fetchClientCredentialsToken } from '../../src/core/oauth2';
 import type { ResolvedRequest } from '../../src/core/requestBuilder';
 
@@ -211,6 +212,37 @@ describe('executeRequest', () => {
     expect(parts[1]).toMatch(/name="files\[\]"; filename="other.png"\r\nContent-Type: image\/png/);
     expect(parts[2]).toMatch(/filename="blob.weird"\r\nContent-Type: application\/octet-stream/);
     expect(parts.filter((p) => p.includes('name="tags"'))).toHaveLength(2);
+  });
+
+  it('refuses to read upload files outside baseDir unless explicitly allowed', async () => {
+    const ws = await realpath(await mkdtemp(join(tmpdir(), 'httpclient-ws-')));
+    const outsideDir = await realpath(await mkdtemp(join(tmpdir(), 'httpclient-out-')));
+    try {
+      await writeFile(join(ws, 'ok.txt'), 'inside');
+      await writeFile(join(outsideDir, 'secret.txt'), 'top secret');
+      await mkdir(join(ws, 'sub'));
+      await symlink(join(outsideDir, 'secret.txt'), join(ws, 'sub', 'link.txt'));
+      const upload = (value: string): ResolvedRequest => ({
+        method: 'POST',
+        url: `${main.url}/echo`,
+        headers: [],
+        body: { kind: 'multipart', fields: [{ name: 'f', value, isFile: true }] },
+      });
+
+      expect(JSON.parse((await executeRequest(upload('ok.txt'), { baseDir: ws })).body).body).toContain('inside');
+      for (const value of [join(outsideDir, 'secret.txt'), '../' + outsideDir.split('/').pop() + '/secret.txt', 'sub/link.txt']) {
+        await expect(executeRequest(upload(value), { baseDir: ws }), value).rejects.toBeInstanceOf(FileAccessError);
+      }
+      await expect(
+        executeRequest({ method: 'PUT', url: `${main.url}/echo`, headers: [], body: { kind: 'file', path: join(outsideDir, 'secret.txt') } }, { baseDir: ws }),
+      ).rejects.toBeInstanceOf(FileAccessError);
+
+      const allowed = await executeRequest(upload('sub/link.txt'), { baseDir: ws, allowFilesOutside: new Set([join(outsideDir, 'secret.txt')]) });
+      expect(JSON.parse(allowed.body).body).toContain('top secret');
+    } finally {
+      await rm(ws, { recursive: true, force: true });
+      await rm(outsideDir, { recursive: true, force: true });
+    }
   });
 
   it('propagates connection errors', async () => {

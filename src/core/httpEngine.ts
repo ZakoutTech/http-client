@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { STATUS_CODES } from 'node:http';
-import { isAbsolute, resolve as resolvePath } from 'node:path';
 import { Agent, FormData, ProxyAgent, request, type Dispatcher } from 'undici';
 import type { ResponseData } from '../shared/model';
+import { FileAccessError, isInsideRoot, realFilePath } from './fileAccess';
 import { mimeTypeFor } from './mime';
 import { fetchClientCredentialsToken } from './oauth2';
 import { fileNameOf } from './paths';
@@ -15,8 +15,13 @@ export interface EngineOptions {
   strictSSL: boolean;
   proxy?: string;
   maxResponseBytes: number;
-  /** Base directory for relative file paths (multipart files, binary body). */
+  /**
+   * Workspace root: relative file paths (multipart files, binary body) resolve against it, and
+   * files whose real path is outside it are refused unless listed in `allowFilesOutside`.
+   */
   baseDir?: string;
+  /** Real paths of files outside `baseDir` that the user explicitly approved for this send. */
+  allowFilesOutside?: ReadonlySet<string>;
 }
 
 export const DEFAULT_ENGINE_OPTIONS: EngineOptions = {
@@ -54,22 +59,26 @@ export function createDispatcher(opts: EngineOptions): Dispatcher {
     : new Agent({ connect: tls });
 }
 
-async function readLocalFile(path: string, baseDir?: string): Promise<Buffer> {
-  const full = isAbsolute(path) || !baseDir ? path : resolvePath(baseDir, path);
-  return readFile(full);
+async function readLocalFile(path: string, opts: EngineOptions): Promise<Buffer> {
+  const real = await realFilePath(path, opts.baseDir);
+  if (opts.baseDir && !opts.allowFilesOutside?.has(real) && !(await isInsideRoot(opts.baseDir, real))) {
+    throw new FileAccessError(`Refusing to upload "${path}": it is outside the workspace.`);
+  }
+  // Read the resolved real path so a symlink swapped after the check can't redirect the read.
+  return readFile(real);
 }
 
-async function buildBody(req: ResolvedRequest, baseDir?: string): Promise<string | Buffer | FormData | undefined> {
+async function buildBody(req: ResolvedRequest, opts: EngineOptions): Promise<string | Buffer | FormData | undefined> {
   switch (req.body.kind) {
     case 'text':
       return req.body.text;
     case 'file':
-      return readLocalFile(req.body.path, baseDir);
+      return readLocalFile(req.body.path, opts);
     case 'multipart': {
       const form = new FormData();
       for (const f of req.body.fields) {
         if (f.isFile) {
-          const data = await readLocalFile(f.value, baseDir);
+          const data = await readLocalFile(f.value, opts);
           form.append(f.name, new Blob([new Uint8Array(data)], { type: mimeTypeFor(f.value) }), fileNameOf(f.value));
         } else {
           form.append(f.name, f.value);
@@ -124,7 +133,7 @@ export async function executeRequest(
 
     let method: string = req.method;
     let url = req.url;
-    let body = await buildBody(req, opts.baseDir);
+    let body = await buildBody(req, opts);
     let redirects = 0;
 
     for (;;) {

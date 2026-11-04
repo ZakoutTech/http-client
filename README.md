@@ -73,6 +73,17 @@ Each file is sent with its file name and a content type based on its extension (
 
 Any `Content-Type` header you set is ignored for multipart bodies, because the boundary has to be generated when the request is sent.
 
+## File access and security
+
+HTTP Client only touches files inside the open workspace folder. Paths are checked by their real location, so `..` and symlinks can't be used to get around this.
+
+- **Uploads** (multipart files and binary bodies) are read only from inside the workspace. If a request points at a file outside it (an absolute path, `../..`, or a symlink), Send shows a dialog listing the exact files and the destination host. Nothing is read unless you choose **Upload anyway**, and that approval applies to that one send only.
+- **`.env`** is read only from the workspace root. A `.env` that is a symlink to a file elsewhere is ignored, with a warning.
+- **Collections and environments** are read from and written to `.httpclient/` only. Files or folders there that are symlinks to somewhere else are skipped, and nothing is written through them.
+- **OpenAPI import**: `$ref`s in a local spec may only point at files in the spec's own folder or below. Specs imported from a URL never read local files.
+- **Workspace Trust**: the extension doesn't run in Restricted Mode, because a workspace you haven't trusted could contain collections that send requests on your behalf.
+- **Saving a response** writes only to the location you pick in the save dialog.
+
 ## Install
 
 The extension is not on the Marketplace yet. Build and install it from source.

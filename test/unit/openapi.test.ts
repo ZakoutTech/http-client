@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exampleToString, generateExample } from '../../src/core/openapi/example';
@@ -179,5 +180,32 @@ describe('generateExample', () => {
     expect(exampleToString(undefined)).toBe('');
     expect(exampleToString(3)).toBe('3');
     expect(exampleToString({ a: 1 })).toBe('{"a":1}');
+  });
+});
+
+describe('importOpenApi $ref containment', () => {
+  const spec = (ref: string) =>
+    JSON.stringify({
+      openapi: '3.0.3',
+      info: { title: 'Refs', version: '1' },
+      paths: { '/pets': { get: { responses: { '200': { description: 'ok', content: { 'application/json': { schema: { $ref: ref } } } } } } } },
+    });
+
+  it('resolves local $refs inside the spec folder but refuses files outside it', async () => {
+    const base = await mkdtemp(join(tmpdir(), 'httpclient-refs-'));
+    try {
+      await mkdir(join(base, 'api', 'schemas'), { recursive: true });
+      await writeFile(join(base, 'api', 'schemas', 'pet.json'), JSON.stringify({ type: 'object', properties: { name: { type: 'string' } } }));
+      await writeFile(join(base, 'secret.json'), JSON.stringify({ type: 'string', example: 'TOP SECRET' }));
+      const location = join(base, 'api', 'openapi.json');
+
+      const ok = await importOpenApi({ text: spec('./schemas/pet.json'), location, isUrl: false });
+      expect(ok.name).toBe('Refs');
+
+      await expect(importOpenApi({ text: spec('../secret.json'), location, isUrl: false })).rejects.toThrow(/outside the spec's folder/);
+      await expect(importOpenApi({ text: spec(join(base, 'secret.json')), location, isUrl: false })).rejects.toThrow(/outside the spec's folder/);
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
   });
 });

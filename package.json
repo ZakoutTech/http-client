@@ -31,6 +31,16 @@
     "client"
   ],
   "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Collections in a workspace can send HTTP requests and upload workspace files, so HTTP Client only runs in trusted workspaces."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "HTTP Client reads collection, environment and upload files from the local file system."
+    }
+  },
   "activationEvents": [
     "workspaceContains:.httpclient"
   ],
